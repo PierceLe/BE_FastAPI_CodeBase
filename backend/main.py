@@ -10,6 +10,11 @@ from middleware.token_middleware import TokenMiddleware
 from utils.token import verify_token
 from fastapi.middleware.cors import CORSMiddleware
 
+# Import database to initialize database and tables
+import database
+# Import models to ensure they are registered with SQLAlchemy
+from model.user import User
+
 if not os.path.exists("bucket"):
     os.makedirs("bucket")
 
