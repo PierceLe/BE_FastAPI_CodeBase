@@ -19,6 +19,11 @@ from dto.request.auth.user_create_request import UserCreateRequest
 from exception.app_exception import AppException
 from exception.error_code import ErrorCode
 from dto.response.user_response import UserResponse
+from googleapiclient.discovery import build
+from google.oauth2 import id_token
+from google.auth.transport.requests import Request
+from config import app_config
+from enums.enum_login_method import E_Login_Method
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="login")
@@ -125,6 +130,31 @@ class AuthService():
                 user.user_id)):
             return False
         return user
+    
+    def login_or_create_google_user(self, token: str):
+        try:
+            idinfo = id_token.verify_oauth2_token(token, Request(), app_config["GOOGLE_AUTHENTICATION"]["CLIENT_ID"])
+            email = idinfo["email"]
+            name = idinfo.get("name")
+            first_name = idinfo.get("given_name")
+            last_name = idinfo.get("family_name")
+            avatar_url = idinfo.get("picture")
+            
+            user = self.user_service.get_user_by_email(email, get_full_info=True)
+            if user:
+                if user.method == E_Login_Method.NORMAL:
+                    raise AppException(ErrorCode.INVALID_METHOD_LOGIN)
+                else:
+                    return user
+
+            new_user = self.user_service.create_user_google(email=email, first_name=first_name, 
+                            last_name=last_name, avatar_url=avatar_url)
+
+            return new_user
+        except ValueError as e:
+            print(e)
+            raise AppException(ErrorCode.INVALID_GOOGLE_TOKEN)
+
 
     def update_user_verified(self, email: str, is_verified=True):
         user = self.user_service.get_user_by_email(email, only_verified=False)
@@ -283,11 +313,13 @@ class AuthService():
             server.quit()
     
     def enable_2fa(self, user_id):
+        print("Enabling 2FA")
         user_full = self.user_service.get_user(user_id=user_id, get_full_info=True)
 
         if user_full.use_2fa_login:
             raise AppException(ErrorCode.ACCOUNT_USED_2FA)
 
+        print("Generate QR Code")
         # Generate 2FA secret and provisioning URI
         two_factor_secret = pyotp.random_base32()
         uri = pyotp.TOTP(two_factor_secret).provisioning_uri(
@@ -295,15 +327,16 @@ class AuthService():
             issuer_name=app_config["APP_GENERAL"]["APP_NAME"]
         )
 
+        print(f"URI: {uri}")
         # Generate QR code image
         qr = qrcode.make(uri)
         img_io = BytesIO()
         qr.save(img_io, format="PNG")
         img_io.seek(0)
 
+        print(f"QR code: {qr}")
         # Convert to base64 string
         qr_base64 = base64.b64encode(img_io.read()).decode("utf-8")
-
         # Save secret to DB
         self.user_service.update_two_factor_secret(user_id, two_factor_secret)
 

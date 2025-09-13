@@ -14,12 +14,18 @@ class ErrorCode(Enum):
     ACCOUNT_NOT_USED_2FA = (1009, "Account not registered to use 2fa") 
     SIGUP_USING_2FA_FAILED = (1010, "2FA REGISTRATION FAILED")
     TWOFA_VERIFICATION_FAILED =  (1011, "2FA authentication failed")  
-    CODE_2FA_WRONG =  (1011, "Code 2FA is incorrect") 
+    CODE_2FA_WRONG =  (1012, "Code 2FA is incorrect") 
+    INVALID_GOOGLE_TOKEN = (1013, "Invalid Google Token") 
+    INVALID_METHOD_LOGIN = (1014, "Account was registered by another method")
+    PIN_INVALID = (1015, "Pin is invalid")
 
+    NOT_PERMISSION = (9998, "Not permission")
     UNCATEGORIZED_EXCEPTION = (9999, "An uncategorized error occurred")
 
     ROOM_NOT_FOUND = (2001, "Room not found")
     EDIT_ROOM_NOT_PERMISSION = (2002, "Edit room not permission")
+    
+    INVALID_TIME_RANGE = (3001, "Invalid time range: start time must be before end time")
 
     def __init__(self, code: int, error_message: str):
         self.code = code
